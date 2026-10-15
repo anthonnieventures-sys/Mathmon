@@ -284,6 +284,43 @@
             makeBuilding('building_gym', '#78909c', '#263238', '#ffd740');
             makeBuilding('building_shop', '#80cbc4', '#00695c', '#ffcc80');
 
+            const makeWideBuilding = (key, wall, roof, accent) => {
+                const wallColor = Phaser.Display.Color.HexStringToColor(wall).color;
+                const roofColor = Phaser.Display.Color.HexStringToColor(roof).color;
+                const accentColor = Phaser.Display.Color.HexStringToColor(accent).color;
+                g.fillStyle(0x000000, 0.18); g.fillEllipse(32, 57, 48, 7);
+                g.fillStyle(wallColor, 1); g.fillRect(5, 22, 54, 30);
+                g.fillStyle(roofColor, 1); g.fillRect(3, 13, 58, 12);
+                g.fillStyle(accentColor, 1); g.fillRect(11, 29, 12, 12); g.fillRect(28, 29, 12, 12); g.fillRect(45, 29, 8, 12);
+                g.fillStyle(0x3e2723, 1); g.fillRect(27, 39, 10, 13);
+                g.fillStyle(0xffffff, 0.85); g.fillRect(15, 17, 34, 3);
+                g.generateTexture(key, 64, 64);
+                g.clear();
+            };
+            makeWideBuilding('building_market', '#efb366', '#d35438', '#fff0c2');
+            makeWideBuilding('building_apartment', '#9aa7b8', '#425466', '#b9e3f2');
+            makeWideBuilding('building_barn', '#b85c38', '#6d2b2b', '#ffe082');
+            makeWideBuilding('building_cafe', '#d9a066', '#5d4037', '#fff8e1');
+
+            const makePalm = (key) => {
+                g.fillStyle(0x6d4c41, 1); g.fillRect(14, 20, 4, 42);
+                g.fillStyle(0x2e7d32, 1);
+                g.fillTriangle(16, 21, 2, 7, 16, 14); g.fillTriangle(16, 21, 30, 7, 16, 14);
+                g.fillTriangle(16, 21, 5, 23, 16, 16); g.fillTriangle(16, 21, 27, 23, 16, 16);
+                g.generateTexture(key, TILE, TILE * 2); g.clear();
+            };
+            makePalm('prop_palm');
+
+            const makeField = (key, cropColor) => {
+                const crop = Phaser.Display.Color.HexStringToColor(cropColor).color;
+                g.fillStyle(0xb88954, 1); g.fillRect(0, 0, TILE, TILE);
+                g.lineStyle(2, 0x8d633c, 0.7); g.lineBetween(0, 8, TILE, 8); g.lineBetween(0, 24, TILE, 24);
+                g.fillStyle(crop, 1); g.fillRect(5, 11, 3, 10); g.fillRect(14, 10, 3, 11); g.fillRect(23, 11, 3, 10);
+                g.generateTexture(key, TILE, TILE); g.clear();
+            };
+            makeField('tile_field', '#76b852');
+            makeField('tile_sand', '#e8c27a');
+
             const makeBattleBg = (key, c1, c2) => {
                 const c1Color = typeof c1 === 'number' ? c1 : Phaser.Display.Color.HexStringToColor(c1).color;
                 const c2Color = typeof c2 === 'number' ? c2 : Phaser.Display.Color.HexStringToColor(c2).color;
@@ -307,6 +344,7 @@
         create() {
             this.cameras.main.setBackgroundColor('#1a1424');
             SoundManager.bindToggle(this);
+            if (window.MathMonMobile) window.MathMonMobile.hide();
 
             const cx = this.cameras.main.width / 2;
             const cy = this.cameras.main.height / 2;
@@ -317,7 +355,26 @@
             this.add.text(cx, cy + 112, 'M: MUSIC ON / OFF', { fontFamily:'"Atkinson Hyperlegible"', fontSize:'10px', color:'#80cbc4' }).setOrigin(0.5);
 
             const saved = loadProfile();
-            const prompt = this.add.text(cx, cy + 70, saved ? 'PRESS ENTER TO CONTINUE' : 'PRESS ENTER TO START', { fontFamily:'"Atkinson Hyperlegible"', fontSize:'16px', color:'#ffffff' }).setOrigin(0.5);
+            const prompt = this.add.text(cx, cy + 70, saved ? 'PRESS ENTER TO CONTINUE' : 'PRESS ENTER TO START', { fontFamily:'"Atkinson Hyperlegible"', fontSize:'16px', color:'#ffffff' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+            const startAdventure = () => {
+                if (this.starting) return;
+                this.starting = true;
+                if (window.MathMonMobile) window.MathMonMobile.requestLandscape();
+                if (window.MathMonMobile) window.MathMonMobile.hide();
+                SoundManager.playSelect();
+                SoundManager.startMusic();
+                this.cameras.main.fadeOut(400, 0, 0, 0);
+                this.time.delayedCall(400, () => {
+                    if (saved && saved.playerName && saved.stats) {
+                        this.scene.start('OverworldScene', saved);
+                    } else {
+                        this.scene.start('CharacterSelectScene');
+                    }
+                });
+            };
+            prompt.on('pointerdown', startAdventure);
+            prompt.on('pointerover', () => prompt.setColor('#ffd740'));
+            prompt.on('pointerout', () => prompt.setColor('#ffffff'));
 
             this.tweens.add({
                 targets: prompt, alpha: 0.2, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
@@ -333,18 +390,7 @@
                 this.tweens.add({ targets: sprite, alpha: 0.6, duration: 1500 + i * 300, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
             }
 
-            this.input.keyboard.once('keydown-ENTER', () => {
-                SoundManager.playSelect();
-                SoundManager.startMusic();
-                this.cameras.main.fadeOut(400, 0, 0, 0);
-                this.time.delayedCall(400, () => {
-                    if (saved && saved.playerName && saved.stats) {
-                        this.scene.start('OverworldScene', saved);
-                    } else {
-                        this.scene.start('CharacterSelectScene');
-                    }
-                });
-            });
+            this.input.keyboard.once('keydown-ENTER', startAdventure);
         }
     }
 
@@ -410,17 +456,29 @@
                 this.nameText.setText(this.nameInput || '_');
             });
 
-            this.input.keyboard.once('keydown-ENTER', () => {
+            const startGame = () => {
                 SoundManager.playSelect();
                 const name = this.nameInput.trim() || (this.gender === 'female' ? 'Maya' : 'Leo');
+                if (window.MathMonMobile) window.MathMonMobile.hide();
                 const stats = createFreshStats();
                 persistProfile(this.gender, name, stats);
+                if (window.MathMonApi) window.MathMonApi.registerPlayer(name, this.gender);
                 this.cameras.main.fadeOut(300, 0, 0, 0);
                 this.time.delayedCall(300, () => this.scene.start('OverworldScene', {
                     gender: this.gender,
                     playerName: name,
                     stats: stats
                 }));
+            };
+            this.input.keyboard.once('keydown-ENTER', startGame);
+
+            if (window.MathMonMobile) window.MathMonMobile.show({
+                placeholder: 'Enter trainer name',
+                submitLabel: 'Start',
+                onSubmit: (value) => {
+                    this.nameInput = value.trim().slice(0, 12);
+                    startGame();
+                }
             });
         }
     }
@@ -447,10 +505,19 @@
                     let tex = 'tile_grass';
                     const r = Phaser.Math.Between(0, 100);
                     if ((x > 8 && x < 14 && y > 10 && y < 16) || (x > 22 && x < 28 && y > 8 && y < 14)) tex = 'tile_path';
+                    if (this.location.theme === 'grass') {
+                        if ((x > 2 && x < 12 && y > 20 && y < 27) || (x > 14 && x < 23 && y > 20 && y < 27)) tex = 'tile_field';
+                        else if (r < 2) tex = 'tile_flower';
+                        else if (r === 3 && x > 15 && y > 5) tex = 'tile_tree';
+                    }
                     if (this.location.theme === 'cave') tex = r < 5 ? 'tile_crystal' : (r < 22 ? 'tile_wall' : 'tile_path');
-                    if (this.location.theme === 'water') tex = r < 18 ? 'tile_water' : (r < 22 ? 'tile_flower' : 'tile_path');
-                    else if (r < 2) tex = 'tile_flower';
-                    else if (r === 3 && x > 15 && y > 5) tex = 'tile_tree';
+                    if (this.location.theme === 'water') {
+                        if (x > 27) tex = r < 55 ? 'tile_water' : 'tile_sand';
+                        else if (r < 14) tex = 'tile_water';
+                        else if (r < 26) tex = 'tile_sand';
+                        else if (r < 30) tex = 'tile_flower';
+                        else if (r === 3) tex = 'tile_tree';
+                    }
                     const img = this.add.image(x * TILE + TILE/2, y * TILE + TILE/2, tex);
                     this.tileGroup.add(img);
                 }
@@ -464,18 +531,49 @@
                 placeBuilding('building_house', x, y, label);
                 this.houseDoor = { x: x * TILE, y: y * TILE + 44 };
             };
+            const placeNpc = (x, y, label, tint) => {
+                const npc = this.add.image(x * TILE, y * TILE, 'npc').setScale(1.35).setDepth(6);
+                if (tint) npc.setTint(Phaser.Display.Color.HexStringToColor(tint).color);
+                npc.setInteractive({ useHandCursor: true });
+                npc.on('pointerdown', () => this.showWorldNotice(`${label}: Keep exploring and answer carefully!`));
+                npc.on('pointerover', () => npc.setScale(1.5));
+                npc.on('pointerout', () => npc.setScale(1.35));
+                this.add.text(x * TILE, y * TILE + 24, label, { fontFamily:'"Atkinson Hyperlegible"', fontSize:'10px', color:'#ffffff', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setDepth(7);
+                this.tweens.add({ targets: npc, y: npc.y - 3, duration: 900 + (x * 30), yoyo: true, repeat: -1, ease:'Sine.easeInOut' });
+            };
+            const placeLandmark = (texture, x, y, label) => {
+                this.add.image(x * TILE, y * TILE, texture).setScale(1.5).setDepth(4);
+                this.add.text(x * TILE, y * TILE + 42, label, { fontFamily:'"Atkinson Hyperlegible"', fontSize:'11px', color:'#fff3c4', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setDepth(5);
+            };
             if (this.location.key === 'sunmeadow') {
                 placeHouse(7, 7, 'YOUR HOUSE');
-                placeBuilding('building_gym', 22, 7, 'SUM GYM');
-                placeBuilding('building_shop', 33, 20, 'ITEM SHOP');
+                placeBuilding('building_house', 13, 7, 'VILLAGE HOME');
+                placeBuilding('building_apartment', 18, 7, 'RESIDENCES');
+                placeBuilding('building_market', 28, 8, 'MARKET SQUARE');
+                placeBuilding('building_cafe', 34, 14, 'SUN CAFE');
+                placeBuilding('building_gym', 22, 16, 'SUM GYM');
+                placeLandmark('building_barn', 9, 23, 'HARVEST BARN');
+                placeNpc(17, 14, 'Mira', '#ef9a9a');
+                placeNpc(25, 12, 'Tomas', '#90caf9');
+                placeNpc(31, 18, 'Lina', '#a5d6a7');
             } else if (this.location.key === 'crystalcaves') {
                 placeBuilding('building_gym', 20, 8, 'DIFFERENCE GYM');
                 placeHouse(8, 21, 'CAVE CAMP');
-                placeBuilding('building_shop', 31, 19, 'SUPPLY CAMP');
+                placeBuilding('building_market', 31, 12, 'TRADE HALL');
+                placeBuilding('building_apartment', 11, 8, 'MINER HOMES');
+                placeBuilding('building_cafe', 29, 21, 'CAVE CAFE');
+                placeNpc(17, 18, 'Oren', '#ffcc80');
+                placeNpc(26, 8, 'Nia', '#ce93d8');
             } else {
                 placeBuilding('building_gym', 21, 7, 'DOJO');
                 placeHouse(8, 20, 'COAST HOUSE');
-                placeBuilding('building_shop', 32, 19, 'BOAT SHOP');
+                placeBuilding('building_market', 29, 18, 'FISH MARKET');
+                placeBuilding('building_cafe', 18, 22, 'BEACH CAFE');
+                placeLandmark('prop_palm', 32, 8, 'PALM COVE');
+                placeLandmark('prop_palm', 36, 12, 'PALM COVE');
+                placeNpc(14, 15, 'Kai', '#80cbc4');
+                placeNpc(24, 19, 'Sela', '#ffab91');
+                placeNpc(34, 22, 'Bo', '#90caf9');
             }
 
             this.cameras.main.setBounds(0, 0, MAP_W * TILE, MAP_H * TILE);
@@ -507,15 +605,18 @@
 
             this.touchDirection = { x: 0, y: 0 };
             const touchButton = (label, x, y, direction, action) => {
-                const button = this.add.rectangle(x, y, 42, 32, 0x111827, 0.8).setStrokeStyle(2, 0xffffff).setScrollFactor(0).setDepth(20);
+                const button = this.add.rectangle(x, y, 52, 44, 0x111827, 0.86).setStrokeStyle(2, 0xffffff).setScrollFactor(0).setDepth(20);
                 this.add.text(x, y, label, { fontFamily:'"Atkinson Hyperlegible"', fontSize:'14px', color:'#ffffff' }).setOrigin(0.5).setScrollFactor(0).setDepth(21);
-                button.setInteractive({ useHandCursor: true });
+                button.setInteractive({ useHandCursor: true, draggable: false });
                 button.on('pointerdown', () => {
                     if (action) action();
                     if (direction) this.touchDirection = direction;
                 });
-                button.on('pointerup', () => { this.touchDirection = { x: 0, y: 0 }; });
-                button.on('pointerout', () => { this.touchDirection = { x: 0, y: 0 }; });
+                const release = () => { this.touchDirection = { x: 0, y: 0 }; };
+                button.on('pointerup', release);
+                button.on('pointerout', release);
+                button.on('pointerupoutside', release);
+                button.on('pointercancel', release);
             };
             const padX = this.cameras.main.width - 82;
             const padY = this.cameras.main.height - 76;
@@ -526,6 +627,7 @@
             touchButton('T', 54, this.cameras.main.height - 68, null, () => this.startTraining());
             touchButton('G', 54, this.cameras.main.height - 30, null, () => this.startGymBattle());
             touchButton('H', 126, this.cameras.main.height - 68, null, () => this.tryEnterHouse());
+            this.input.on('pointerup', () => { this.touchDirection = { x: 0, y: 0 }; });
 
             this.time.delayedCall(1000, () => {
                 const prompt = this.add.text(this.cameras.main.width/2, this.cameras.main.height - 40, 'Press G to challenge Gym', { fontFamily:'"Atkinson Hyperlegible"', fontSize:'14px', color:'#ffd740' }).setOrigin(0.5).setScrollFactor(0).setDepth(20);
@@ -807,6 +909,10 @@
             this.add.text(cw/2 - (cw - 100) / 2, ch * 0.86, 'ANSWER', { fontFamily:'"Atkinson Hyperlegible"', fontSize:'14px', color:'#80cbc4' }).setOrigin(0, 0.5);
             this.answerBox = this.add.rectangle(cw/2, ch * 0.93, cw - 100, 34, 0x18202b, 1).setStrokeStyle(2, 0xffd740);
             this.answerText = this.add.text(cw/2, ch * 0.93, 'Type your answer  |', { fontFamily:'"Atkinson Hyperlegible"', fontSize:'20px', color:'#ffd740' }).setOrigin(0.5);
+            if (window.MathMonMobile && window.MathMonMobile.isTouchDevice()) {
+                this.answerBox.setVisible(false);
+                this.answerText.setVisible(false);
+            }
 
             this.inputText = '';
             this.isPlayerTurn = true;
@@ -824,6 +930,18 @@
                     this.submitAnswer();
                 }
                 this.answerText.setText(this.inputText ? `${this.inputText} |` : 'Type your answer  |');
+            });
+
+            if (window.MathMonMobile) window.MathMonMobile.show({
+                type: 'text',
+                inputMode: 'decimal',
+                placeholder: 'Type your answer',
+                submitLabel: 'Answer',
+                onSubmit: (value) => {
+                    this.inputText = value.trim();
+                    this.answerText.setText(this.inputText ? `${this.inputText} |` : 'Type your answer  |');
+                    this.submitAnswer();
+                }
             });
 
             this.nextQuestion();
@@ -860,6 +978,15 @@
 
             if (val === this.currentAnswer) {
                 updateStatsAfterAnswer(this.stats, this.currentQuestionCategory, true);
+                if (window.MathMonApi) window.MathMonApi.recordAttempt({
+                    category: this.currentQuestionCategory,
+                    correct: true,
+                    response_time: responseTime,
+                    difficulty: this.difficulty,
+                    answer_given: val,
+                    correct_answer: this.currentAnswer,
+                    level: this.stats.level
+                });
                 const baseDmg = Math.max(8, 25 - this.stats.level * 0.3);
                 const dmg = Math.round(baseDmg - 5) + Phaser.Math.Between(3, 8) + speedBonus;
                 const actual = Math.max(5, dmg);
@@ -887,6 +1014,15 @@
                 }
             } else {
                 updateStatsAfterAnswer(this.stats, this.currentQuestionCategory, false);
+                if (window.MathMonApi) window.MathMonApi.recordAttempt({
+                    category: this.currentQuestionCategory,
+                    correct: false,
+                    response_time: responseTime,
+                    difficulty: this.difficulty,
+                    answer_given: val,
+                    correct_answer: this.currentAnswer,
+                    level: this.stats.level
+                });
                 const heal = Math.max(3, Math.round(this.enemyHp.max * 0.1));
                 this.enemyHp.current = Math.min(this.enemyHp.max, this.enemyHp.current + heal);
                 this.updateEnemyBar();
@@ -980,6 +1116,7 @@
 
         endBattle(won) {
             let xp = 0, score = 0;
+            if (window.MathMonMobile) window.MathMonMobile.hide();
             if (this.mode !== 'training') {
                 if (won) {
                     xp = Math.round(50 * (1 + this.stats.level * 0.1));
@@ -995,6 +1132,14 @@
             }
             const leveledUp = applyLevelProgression(this.stats);
             saveSceneProgress(this);
+            if (window.MathMonApi && this.mode !== 'training') window.MathMonApi.recordBattle({
+                battle_id: `${window.MathMonApi.getPlayerId()}-${Date.now()}`,
+                won,
+                xp_earned: xp,
+                score_earned: score,
+                opponent_name: this.creatureData.name,
+                category: this.trainingCategory || this.creatureData.type || 'addition'
+            });
 
             this.cameras.main.fadeOut(400, 0, 0, 0);
             this.time.delayedCall(400, () => {
@@ -1060,15 +1205,24 @@
                 this.add.text(cw/2, cy + 80, badgeText, { fontFamily:'"Atkinson Hyperlegible"', fontSize:'16px', color: badgeColor }).setOrigin(0.5);
             }
 
-            const cont = this.add.text(cw/2, cy + 120, 'PRESS ENTER TO CONTINUE', { fontFamily:'"Atkinson Hyperlegible"', fontSize:'18px', color:'#ffffff' }).setOrigin(0.5);
+            const cont = this.add.text(cw/2, cy + 120, 'TOUCH TO CONTINUE', { fontFamily:'"Atkinson Hyperlegible"', fontSize:'18px', color:'#ffffff' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
             this.tweens.add({ targets: cont, alpha: 0.2, duration: 700, yoyo: true, repeat: -1, ease:'Sine.easeInOut' });
 
             let returnScene = 'OverworldScene';
             let returnData = { gender: this.gender, playerName: this.playerName, stats: this.stats, world: this.world };
+            const continueToWorld = () => {
+                if (this.leaving) return;
+                this.leaving = true;
+                this.cameras.main.fadeOut(300, 0, 0, 0);
+                this.time.delayedCall(300, () => this.scene.start(returnScene, returnData));
+            };
+            cont.on('pointerdown', continueToWorld);
 
             if (this.mode === 'training') {
-                const retrain = this.add.text(cw/2, cy + 160, 'Press T to Train Again', { fontFamily:'"Atkinson Hyperlegible"', fontSize:'16px', color:'#ffd740' }).setOrigin(0.5);
-                this.input.keyboard.once('keydown-T', () => {
+                const retrain = this.add.text(cw/2, cy + 160, 'TOUCH TO TRAIN AGAIN', { fontFamily:'"Atkinson Hyperlegible"', fontSize:'16px', color:'#ffd740' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+                const trainAgain = () => {
+                    if (this.leaving) return;
+                    this.leaving = true;
                     this.cameras.main.fadeOut(200, 0, 0, 0);
                     this.time.delayedCall(200, () => this.scene.start('TrainingScene', {
                         gender: this.gender,
@@ -1077,13 +1231,12 @@
                         category: this.trainingCategory,
                         world: this.world
                     }));
-                });
+                };
+                retrain.on('pointerdown', trainAgain);
+                this.input.keyboard.once('keydown-T', trainAgain);
             }
 
-            this.input.keyboard.once('keydown-ENTER', () => {
-                this.cameras.main.fadeOut(300, 0, 0, 0);
-                this.time.delayedCall(300, () => this.scene.start(returnScene, returnData));
-            });
+            this.input.keyboard.once('keydown-ENTER', continueToWorld);
         }
     }
 
@@ -1324,9 +1477,10 @@
                     scene: [BootScene, TitleScene, CharacterSelectScene, NameEntryScene, OverworldScene, BattleScene, ResultsScene, HouseInteriorScene, TrainingScene],
                     scale: {
                         mode: Phaser.Scale.FIT,
-                        autoCenter: Phaser.Scale.CENTER_BOTH
+                        autoCenter: Phaser.Scale.CENTER_BOTH,
+                        expandParent: true
                     },
-                    input: { keyboard: true },
+                    input: { keyboard: true, activePointers: 3 },
                     render: {
                         antialias: true,
                         pixelArt: false,
